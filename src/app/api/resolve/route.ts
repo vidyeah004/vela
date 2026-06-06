@@ -9,43 +9,28 @@ export async function POST(req: NextRequest) {
     body: JSON.stringify({
       model: 'llama-3.3-70b-versatile',
       temperature: 0,
-      messages: [{
-        role: 'user',
-        content: `You are a scheduling conflict resolution engine. Given these extracted scheduling constraints, find the best meeting slots.
+      response_format: { type: 'json_object' },
+      messages: [{ role: 'user', content: `You are a scheduling conflict resolution engine. Find the best meeting slots.
 
-Return ONLY valid JSON, no markdown, no explanation:
+Return ONLY valid JSON:
 {
-  "recommendedSlots": [
-    {
-      "rank": number,
-      "datetime": string,
-      "duration": string,
-      "confidence": "high" | "medium" | "low",
-      "reasoning": string,
-      "conflicts": string[]
-    }
-  ],
-  "conflicts": [
-    { "description": string, "affectedParties": string[], "resolution": string }
-  ],
-  "timezoneMap": [
-    { "person": string, "timezone": string, "localTime": string }
-  ],
+  "recommendedSlots": [{ "rank": number, "datetime": string, "duration": string, "confidence": "high" | "medium" | "low", "reasoning": string, "conflicts": string[] }],
+  "conflicts": [{ "description": string, "affectedParties": string[], "resolution": string }],
+  "timezoneMap": [{ "person": string, "timezone": string, "localTime": string }],
   "recommendation": string
 }
 
 CONSTRAINTS:
-${JSON.stringify(parsed, null, 2)}`
-      }]
+${JSON.stringify(parsed, null, 2)}` }]
     })
   })
 
   const data = await res.json()
   try {
     const text = data.choices[0].message.content
-    const result = JSON.parse(text)
+    const result = JSON.parse(text.replace(/```json|```/g, '').trim())
     return NextResponse.json(result)
   } catch {
-    return NextResponse.json({ error: 'Resolve failed', raw: data.choices?.[0]?.message?.content }, { status: 500 })
+    return NextResponse.json({ error: 'Resolve failed', raw: data.choices?.[0]?.message?.content, groqError: data.error }, { status: 500 })
   }
 }
